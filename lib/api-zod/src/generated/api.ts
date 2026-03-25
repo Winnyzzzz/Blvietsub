@@ -14,3 +14,124 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * Returns paginated list of movies scraped from source
+ * @summary Get movies list
+ */
+export const getMoviesQueryPageDefault = 1;
+
+export const GetMoviesQueryParams = zod.object({
+  page: zod.coerce.number().default(getMoviesQueryPageDefault),
+});
+
+export const GetMoviesResponse = zod.object({
+  movies: zod.array(
+    zod.object({
+      title: zod.string(),
+      url: zod.string(),
+      thumbnail: zod.string().optional(),
+      quality: zod.string().optional(),
+      year: zod.string().optional(),
+      episode: zod.string().optional(),
+      labels: zod.array(zod.string()).optional(),
+    }),
+  ),
+  currentPage: zod.number(),
+  hasNextPage: zod.boolean(),
+  totalPages: zod.number().optional(),
+});
+
+/**
+ * Search movies by keyword
+ * @summary Search movies
+ */
+export const searchMoviesQueryPageDefault = 1;
+
+export const SearchMoviesQueryParams = zod.object({
+  q: zod.coerce.string(),
+  page: zod.coerce.number().default(searchMoviesQueryPageDefault),
+});
+
+export const SearchMoviesResponse = zod.object({
+  movies: zod.array(
+    zod.object({
+      title: zod.string(),
+      url: zod.string(),
+      thumbnail: zod.string().optional(),
+      quality: zod.string().optional(),
+      year: zod.string().optional(),
+      episode: zod.string().optional(),
+      labels: zod.array(zod.string()).optional(),
+    }),
+  ),
+  currentPage: zod.number(),
+  hasNextPage: zod.boolean(),
+  totalPages: zod.number().optional(),
+});
+
+/**
+ * Returns movie detail info
+ * @summary Get movie detail
+ */
+export const GetMovieDetailQueryParams = zod.object({
+  url: zod.coerce.string(),
+});
+
+export const GetMovieDetailResponse = zod.object({
+  title: zod.string(),
+  url: zod.string(),
+  thumbnail: zod.string().optional(),
+  description: zod.string().optional(),
+  quality: zod.string().optional(),
+  year: zod.string().optional(),
+  episode: zod.string().optional(),
+  duration: zod.string().optional(),
+  country: zod.string().optional(),
+  director: zod.string().optional(),
+  actors: zod.string().optional(),
+  labels: zod.array(zod.string()).optional(),
+  iframeUrl: zod.string().optional(),
+  embedUrl: zod.string().optional(),
+  relatedMovies: zod
+    .array(
+      zod.object({
+        title: zod.string(),
+        url: zod.string(),
+        thumbnail: zod.string().optional(),
+        quality: zod.string().optional(),
+        year: zod.string().optional(),
+        episode: zod.string().optional(),
+        labels: zod.array(zod.string()).optional(),
+      }),
+    )
+    .optional(),
+});
+
+/**
+ * Returns movies filtered by category label
+ * @summary Get movies by category/label
+ */
+export const getMoviesByCategoryQueryPageDefault = 1;
+
+export const GetMoviesByCategoryQueryParams = zod.object({
+  label: zod.coerce.string(),
+  page: zod.coerce.number().default(getMoviesByCategoryQueryPageDefault),
+});
+
+export const GetMoviesByCategoryResponse = zod.object({
+  movies: zod.array(
+    zod.object({
+      title: zod.string(),
+      url: zod.string(),
+      thumbnail: zod.string().optional(),
+      quality: zod.string().optional(),
+      year: zod.string().optional(),
+      episode: zod.string().optional(),
+      labels: zod.array(zod.string()).optional(),
+    }),
+  ),
+  currentPage: zod.number(),
+  hasNextPage: zod.boolean(),
+  totalPages: zod.number().optional(),
+});

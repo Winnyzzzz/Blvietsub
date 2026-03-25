@@ -8,3 +8,56 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface Movie {
+  title: string;
+  url: string;
+  thumbnail?: string;
+  quality?: string;
+  year?: string;
+  episode?: string;
+  labels?: string[];
+}
+
+export interface MovieListResponse {
+  movies: Movie[];
+  currentPage: number;
+  hasNextPage: boolean;
+  totalPages?: number;
+}
+
+export interface MovieDetail {
+  title: string;
+  url: string;
+  thumbnail?: string;
+  description?: string;
+  quality?: string;
+  year?: string;
+  episode?: string;
+  duration?: string;
+  country?: string;
+  director?: string;
+  actors?: string;
+  labels?: string[];
+  iframeUrl?: string;
+  embedUrl?: string;
+  relatedMovies?: Movie[];
+}
+
+export type GetMoviesParams = {
+  page?: number;
+};
+
+export type SearchMoviesParams = {
+  q: string;
+  page?: number;
+};
+
+export type GetMovieDetailParams = {
+  url: string;
+};
+
+export type GetMoviesByCategoryParams = {
+  label: string;
+  page?: number;
+};

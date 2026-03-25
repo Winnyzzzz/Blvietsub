@@ -13,7 +13,15 @@ import type {
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  GetMovieDetailParams,
+  GetMoviesByCategoryParams,
+  GetMoviesParams,
+  HealthStatus,
+  MovieDetail,
+  MovieListResponse,
+  SearchMoviesParams,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -92,6 +100,392 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns paginated list of movies scraped from source
+ * @summary Get movies list
+ */
+export const getGetMoviesUrl = (params?: GetMoviesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/movies?${stringifiedParams}`
+    : `/api/movies`;
+};
+
+export const getMovies = async (
+  params?: GetMoviesParams,
+  options?: RequestInit,
+): Promise<MovieListResponse> => {
+  return customFetch<MovieListResponse>(getGetMoviesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMoviesQueryKey = (params?: GetMoviesParams) => {
+  return [`/api/movies`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMoviesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMovies>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetMoviesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMovies>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMoviesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMovies>>> = ({
+    signal,
+  }) => getMovies(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMovies>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMoviesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMovies>>
+>;
+export type GetMoviesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get movies list
+ */
+
+export function useGetMovies<
+  TData = Awaited<ReturnType<typeof getMovies>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetMoviesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMovies>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMoviesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Search movies by keyword
+ * @summary Search movies
+ */
+export const getSearchMoviesUrl = (params: SearchMoviesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/movies/search?${stringifiedParams}`
+    : `/api/movies/search`;
+};
+
+export const searchMovies = async (
+  params: SearchMoviesParams,
+  options?: RequestInit,
+): Promise<MovieListResponse> => {
+  return customFetch<MovieListResponse>(getSearchMoviesUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSearchMoviesQueryKey = (params?: SearchMoviesParams) => {
+  return [`/api/movies/search`, ...(params ? [params] : [])] as const;
+};
+
+export const getSearchMoviesQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchMovies>>,
+  TError = ErrorType<unknown>,
+>(
+  params: SearchMoviesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchMovies>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSearchMoviesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof searchMovies>>> = ({
+    signal,
+  }) => searchMovies(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchMovies>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchMoviesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchMovies>>
+>;
+export type SearchMoviesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Search movies
+ */
+
+export function useSearchMovies<
+  TData = Awaited<ReturnType<typeof searchMovies>>,
+  TError = ErrorType<unknown>,
+>(
+  params: SearchMoviesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchMovies>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchMoviesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns movie detail info
+ * @summary Get movie detail
+ */
+export const getGetMovieDetailUrl = (params: GetMovieDetailParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/movies/detail?${stringifiedParams}`
+    : `/api/movies/detail`;
+};
+
+export const getMovieDetail = async (
+  params: GetMovieDetailParams,
+  options?: RequestInit,
+): Promise<MovieDetail> => {
+  return customFetch<MovieDetail>(getGetMovieDetailUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMovieDetailQueryKey = (params?: GetMovieDetailParams) => {
+  return [`/api/movies/detail`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMovieDetailQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMovieDetail>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMovieDetailParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMovieDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMovieDetailQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMovieDetail>>> = ({
+    signal,
+  }) => getMovieDetail(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMovieDetail>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMovieDetailQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMovieDetail>>
+>;
+export type GetMovieDetailQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get movie detail
+ */
+
+export function useGetMovieDetail<
+  TData = Awaited<ReturnType<typeof getMovieDetail>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMovieDetailParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMovieDetail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMovieDetailQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * Returns movies filtered by category label
+ * @summary Get movies by category/label
+ */
+export const getGetMoviesByCategoryUrl = (
+  params: GetMoviesByCategoryParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/movies/category?${stringifiedParams}`
+    : `/api/movies/category`;
+};
+
+export const getMoviesByCategory = async (
+  params: GetMoviesByCategoryParams,
+  options?: RequestInit,
+): Promise<MovieListResponse> => {
+  return customFetch<MovieListResponse>(getGetMoviesByCategoryUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMoviesByCategoryQueryKey = (
+  params?: GetMoviesByCategoryParams,
+) => {
+  return [`/api/movies/category`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetMoviesByCategoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMoviesByCategory>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMoviesByCategoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMoviesByCategory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMoviesByCategoryQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMoviesByCategory>>
+  > = ({ signal }) =>
+    getMoviesByCategory(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMoviesByCategory>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMoviesByCategoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMoviesByCategory>>
+>;
+export type GetMoviesByCategoryQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get movies by category/label
+ */
+
+export function useGetMoviesByCategory<
+  TData = Awaited<ReturnType<typeof getMoviesByCategory>>,
+  TError = ErrorType<unknown>,
+>(
+  params: GetMoviesByCategoryParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMoviesByCategory>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMoviesByCategoryQueryOptions(params, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

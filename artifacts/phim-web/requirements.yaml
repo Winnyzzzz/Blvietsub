@@ -1,0 +1,14 @@
+packages:
+  "framer-motion": "For cinematic page transitions and smooth element reveals"
+  "clsx": "For conditional class merging in reusable UI components"
+  "tailwind-merge": "For resolving tailwind class conflicts safely"
+
+images:
+  - path: "artifacts/phim-web/public/images/hero-bg.png"
+    description: "Dark, cinematic gradient mesh background with deep crimson red, black, and subtle teal light leaks, 4k resolution, premium streaming platform aesthetic"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using generated hooks from @workspace/api-client-react
+  - wouter used for routing with URL search params for state (url, q, label)
+  - Enforcing a strict dark mode cinematic theme

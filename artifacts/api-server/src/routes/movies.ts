@@ -1,0 +1,327 @@
+import { Router, type IRouter } from "express";
+import * as cheerio from "cheerio";
+
+const router: IRouter = Router();
+
+const BASE_URL = "https://www.blvietsub.online";
+
+const USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
+async function fetchPage(url: string): Promise<string> {
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent": USER_AGENT,
+      Accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+      "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+      Referer: BASE_URL,
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP error! status: ${res.status}`);
+  }
+  return res.text();
+}
+
+function parseThumbnail(src: string | undefined): string {
+  if (!src) return "";
+  if (src.startsWith("data:")) return "";
+  if (src.startsWith("http")) return src;
+  if (src.startsWith("//")) return "https:" + src;
+  return BASE_URL + src;
+}
+
+function cleanTitle(raw: string): string {
+  return raw.replace(/^\[|\]$/g, "").trim();
+}
+
+function parseEpisode(content: string): string {
+  const match = content.match(/\[stt\/([^\]]+)\]/);
+  return match ? match[1].trim() : "";
+}
+
+function parseMoviesFromPage(html: string) {
+  const $ = cheerio.load(html);
+  const movies: {
+    title: string;
+    url: string;
+    thumbnail: string;
+    quality: string;
+    year: string;
+    episode: string;
+    labels: string[];
+  }[] = [];
+
+  $(".phimitem").each((_i, el) => {
+    const $el = $(el);
+    const linkEl = $el.find("a.lable-about").first();
+    const href = linkEl.attr("href") || "";
+    const url = href.startsWith("http") ? href : BASE_URL + href;
+
+    const titleAttr = linkEl.attr("title") || "";
+    const titleH3 = cleanTitle($el.find("h3.lable-home").first().text().trim());
+    const title = titleH3 || titleAttr;
+
+    const img = $el.find("img.img-lable").first();
+    const thumbnail = parseThumbnail(
+      img.attr("data-src") || img.attr("data-original") || img.attr("src") || ""
+    );
+
+    const mainContent = $el.find(".main-movie-content").first().text().trim();
+    const episode = parseEpisode(mainContent);
+
+    const year = (titleAttr.match(/\((\d{4})\)/) || [])[1] || "";
+
+    if (title || url) {
+      movies.push({
+        title,
+        url,
+        thumbnail,
+        quality: "HD",
+        year,
+        episode,
+        labels: [],
+      });
+    }
+  });
+
+  return movies;
+}
+
+function parsePagination(html: string, currentPage: number) {
+  const $ = cheerio.load(html);
+  let hasNextPage = false;
+  let totalPages = currentPage;
+
+  const pagerEl = $("#blog-pager");
+  if (pagerEl.length) {
+    pagerEl.find("span a").each((_i, el) => {
+      const n = parseInt($(el).text().trim(), 10);
+      if (!isNaN(n) && n > totalPages) totalPages = n;
+    });
+
+    const pageCurrent = parseInt(pagerEl.find(".pagecurrent").text().trim(), 10);
+    const allLinks = pagerEl.find("span a").map((_i, el) => parseInt($(el).text().trim(), 10)).get().filter((n) => !isNaN(n));
+    const maxPage = Math.max(...allLinks, pageCurrent || 0, currentPage);
+    if (maxPage > totalPages) totalPages = maxPage;
+    if (currentPage < maxPage) hasNextPage = true;
+
+    const svgLinks = pagerEl.find("span a svg").parent();
+    if (svgLinks.length > 0) {
+      const lastSvgEl = svgLinks.last();
+      const href = lastSvgEl.attr("href") || "";
+      if (href && href.includes("page=")) {
+        const m = href.match(/page=(\d+)/);
+        if (m) {
+          const n = parseInt(m[1], 10);
+          if (n > totalPages) totalPages = n;
+          if (n > currentPage) hasNextPage = true;
+        }
+      } else if (href) {
+        hasNextPage = true;
+      }
+    }
+  }
+
+  return { hasNextPage, totalPages };
+}
+
+router.get("/movies", async (req, res) => {
+  try {
+    const page = parseInt((req.query.page as string) || "1", 10);
+    const url =
+      page === 1
+        ? `${BASE_URL}/?m=1`
+        : `${BASE_URL}/search?updated-max=&max-results=16&start=${(page - 1) * 16}&by-date=false`;
+
+    const html = await fetchPage(url);
+    const movies = parseMoviesFromPage(html);
+    const { hasNextPage, totalPages } = parsePagination(html, page);
+
+    res.json({ movies, currentPage: page, hasNextPage, totalPages });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching movies");
+    res.status(500).json({ error: "Failed to fetch movies" });
+  }
+});
+
+router.get("/movies/search", async (req, res) => {
+  try {
+    const q = (req.query.q as string) || "";
+    const page = parseInt((req.query.page as string) || "1", 10);
+
+    const searchUrl =
+      page === 1
+        ? `${BASE_URL}/search?q=${encodeURIComponent(q)}`
+        : `${BASE_URL}/search?q=${encodeURIComponent(q)}&updated-max=&max-results=16&start=${(page - 1) * 16}&by-date=false`;
+
+    const html = await fetchPage(searchUrl);
+    const movies = parseMoviesFromPage(html);
+    const { hasNextPage, totalPages } = parsePagination(html, page);
+
+    res.json({ movies, currentPage: page, hasNextPage, totalPages });
+  } catch (err) {
+    req.log.error({ err }, "Error searching movies");
+    res.status(500).json({ error: "Failed to search movies" });
+  }
+});
+
+router.get("/movies/category", async (req, res) => {
+  try {
+    const label = (req.query.label as string) || "";
+    const page = parseInt((req.query.page as string) || "1", 10);
+
+    const catUrl =
+      page === 1
+        ? `${BASE_URL}/search/label/${encodeURIComponent(label)}`
+        : `${BASE_URL}/search/label/${encodeURIComponent(label)}?updated-max=&max-results=16&start=${(page - 1) * 16}&by-date=false`;
+
+    const html = await fetchPage(catUrl);
+    const movies = parseMoviesFromPage(html);
+    const { hasNextPage, totalPages } = parsePagination(html, page);
+
+    res.json({ movies, currentPage: page, hasNextPage, totalPages });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching category movies");
+    res.status(500).json({ error: "Failed to fetch category movies" });
+  }
+});
+
+router.get("/movies/detail", async (req, res) => {
+  try {
+    const url = (req.query.url as string) || "";
+    if (!url) {
+      res.status(400).json({ error: "url parameter is required" });
+      return;
+    }
+
+    const fullUrl = url.startsWith("http") ? url : BASE_URL + url;
+    const html = await fetchPage(fullUrl);
+    const $ = cheerio.load(html);
+
+    const titleEl = $("h1.post-title, h1.entry-title, h1").first();
+    const title = titleEl.text().trim();
+
+    const img = $(".post-body img, .entry-content img").first();
+    const thumbnail = parseThumbnail(
+      img.attr("data-src") ||
+        img.attr("data-original") ||
+        img.attr("src") ||
+        ""
+    );
+
+    const bodyText = $(".post-body, .entry-content").first().text();
+
+    let description = "";
+    const ndMatch = bodyText.match(/\[nd\]([\s\S]*?)(?:\[\/nd\]|$)/);
+    if (ndMatch) {
+      description = ndMatch[1].trim();
+    }
+
+    const mainMovieContent = $("[name='main-movie-content']").first().text();
+    const episode = parseEpisode(mainMovieContent);
+
+    const year = (title.match(/\((\d{4})\)/) || [])[1] || "";
+
+    const embedUrls: string[] = [];
+    const embedPattern = /\[(\d+)\|([^\]]+)\]/g;
+    let m: RegExpExecArray | null;
+    while ((m = embedPattern.exec(bodyText)) !== null) {
+      embedUrls.push(m[2].trim());
+    }
+
+    const iframeUrl = embedUrls[0] || "";
+
+    const metaInfo: Record<string, string> = {};
+    const infoMatch = bodyText.match(/\[info\]([\s\S]*?)\[\/info\]/);
+    if (infoMatch) {
+      const infoText = infoMatch[1];
+      const lines = infoText.split("\n").filter((l) => l.trim());
+      for (const line of lines) {
+        const colonIdx = line.indexOf(":");
+        if (colonIdx > 0) {
+          const key = line.slice(0, colonIdx).trim().toLowerCase();
+          const val = line.slice(colonIdx + 1).trim();
+          metaInfo[key] = val;
+        }
+      }
+    }
+
+    const duration =
+      metaInfo["thời lượng"] ||
+      metaInfo["thoi luong"] ||
+      metaInfo["duration"] ||
+      "";
+    const country =
+      metaInfo["quốc gia"] || metaInfo["quoc gia"] || metaInfo["country"] || "";
+    const director =
+      metaInfo["đạo diễn"] || metaInfo["dao dien"] || metaInfo["director"] || "";
+    const actors =
+      metaInfo["diễn viên"] || metaInfo["dien vien"] || metaInfo["cast"] || "";
+
+    const labels: string[] = [];
+    $(".post-labels a, .label a").each((_i, el) => {
+      const t = $(el).text().trim();
+      if (t && !labels.includes(t)) labels.push(t);
+    });
+
+    const relatedMovies: {
+      title: string;
+      url: string;
+      thumbnail: string;
+      quality: string;
+      year: string;
+      episode: string;
+      labels: string[];
+    }[] = [];
+
+    $(".phimitem").each((_i, el) => {
+      const $el = $(el);
+      const linkEl = $el.find("a.lable-about").first();
+      const href = linkEl.attr("href") || "";
+      const relUrl = href.startsWith("http") ? href : BASE_URL + href;
+      const relTitle = cleanTitle(
+        $el.find("h3.lable-home").first().text().trim()
+      );
+      const relImg = $el.find("img.img-lable").first();
+      const relThumb = parseThumbnail(
+        relImg.attr("data-src") || relImg.attr("src") || ""
+      );
+      if (relTitle) {
+        relatedMovies.push({
+          title: relTitle,
+          url: relUrl,
+          thumbnail: relThumb,
+          quality: "HD",
+          year: "",
+          episode: "",
+          labels: [],
+        });
+      }
+    });
+
+    res.json({
+      title,
+      url: fullUrl,
+      thumbnail,
+      description,
+      quality: "HD",
+      year,
+      episode,
+      duration,
+      country,
+      director,
+      actors,
+      labels,
+      iframeUrl,
+      embedUrl: iframeUrl,
+      relatedMovies,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Error fetching movie detail");
+    res.status(500).json({ error: "Failed to fetch movie detail" });
+  }
+});
+
+export default router;
