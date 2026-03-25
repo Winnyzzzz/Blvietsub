@@ -8,19 +8,40 @@ import { MovieGrid } from "@/components/movie/MovieGrid";
 import { Pagination } from "@/components/ui/Pagination";
 
 export default function Home() {
-  const [page, setPage] = useState(1);
-  const { data, isLoading } = useGetMovies({ page });
+  // cursors[0] = "" (page 1, no cursor), cursors[n] = cursor for page n+1
+  const [cursors, setCursors] = useState<string[]>([""]);
+
+  const currentCursor = cursors[cursors.length - 1];
+  const currentPage = cursors.length;
+
+  const { data, isLoading } = useGetMovies(
+    currentCursor ? { cursor: currentCursor } : {}
+  );
+
+  function handleNext() {
+    if (data?.nextCursor) {
+      setCursors((prev) => [...prev, data.nextCursor!]);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function handlePrev() {
+    if (cursors.length > 1) {
+      setCursors((prev) => prev.slice(0, -1));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      
+
       <main className="flex-1 pb-20">
-        {page === 1 && <Hero />}
-        
+        {currentPage === 1 && <Hero />}
+
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-12 md:mt-20">
-          <MovieGrid 
-            isLoading={isLoading} 
+          <MovieGrid
+            isLoading={isLoading}
             isEmpty={!isLoading && (!data?.movies || data.movies.length === 0)}
             title="Phim Mới Cập Nhật"
             subtitle="Danh sách các bộ phim được thêm mới nhất vào hệ thống."
@@ -31,13 +52,11 @@ export default function Home() {
           </MovieGrid>
 
           {data && data.movies && data.movies.length > 0 && (
-            <Pagination 
-              currentPage={data.currentPage || page} 
-              hasNextPage={data.hasNextPage || false}
-              onPageChange={(newPage) => {
-                setPage(newPage);
-                window.scrollTo({ top: page === 1 ? window.innerHeight - 100 : 0, behavior: 'smooth' });
-              }}
+            <Pagination
+              currentPage={currentPage}
+              hasNextPage={data.hasNextPage ?? false}
+              onNext={handleNext}
+              onPrev={handlePrev}
             />
           )}
         </div>

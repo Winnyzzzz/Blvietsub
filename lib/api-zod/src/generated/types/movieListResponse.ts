@@ -9,7 +9,8 @@ import type { Movie } from "./movie";
 
 export interface MovieListResponse {
   movies: Movie[];
-  currentPage: number;
+  /** URL cursor for the next page, empty string if no more pages */
+  nextCursor?: string;
   hasNextPage: boolean;
-  totalPages?: number;
+  page: number;
 }

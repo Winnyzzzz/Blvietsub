@@ -32,12 +32,12 @@ paths:
       summary: Get movies list
       description: Returns paginated list of movies scraped from source
       parameters:
-        - name: page
+        - name: cursor
           in: query
           required: false
           schema:
-            type: integer
-            default: 1
+            type: string
+            description: Cursor URL for next page (from previous response nextCursor)
       responses:
         "200":
           description: Movie list
@@ -57,12 +57,11 @@ paths:
           required: true
           schema:
             type: string
-        - name: page
+        - name: cursor
           in: query
           required: false
           schema:
-            type: integer
-            default: 1
+            type: string
       responses:
         "200":
           description: Search results
@@ -101,12 +100,11 @@ paths:
           required: true
           schema:
             type: string
-        - name: page
+        - name: cursor
           in: query
           required: false
           schema:
-            type: integer
-            default: 1
+            type: string
       responses:
         "200":
           description: Category movies
@@ -152,16 +150,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Movie"
-        currentPage:
-          type: integer
+        nextCursor:
+          type: string
+          description: URL cursor for the next page, empty string if no more pages
         hasNextPage:
           type: boolean
-        totalPages:
+        page:
           type: integer
       required:
         - movies
-        - currentPage
         - hasNextPage
+        - page
     MovieDetail:
       type: object
       properties:

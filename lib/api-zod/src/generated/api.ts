@@ -19,10 +19,8 @@ export const HealthCheckResponse = zod.object({
  * Returns paginated list of movies scraped from source
  * @summary Get movies list
  */
-export const getMoviesQueryPageDefault = 1;
-
 export const GetMoviesQueryParams = zod.object({
-  page: zod.coerce.number().default(getMoviesQueryPageDefault),
+  cursor: zod.coerce.string().optional(),
 });
 
 export const GetMoviesResponse = zod.object({
@@ -37,20 +35,21 @@ export const GetMoviesResponse = zod.object({
       labels: zod.array(zod.string()).optional(),
     }),
   ),
-  currentPage: zod.number(),
+  nextCursor: zod
+    .string()
+    .optional()
+    .describe("URL cursor for the next page, empty string if no more pages"),
   hasNextPage: zod.boolean(),
-  totalPages: zod.number().optional(),
+  page: zod.number(),
 });
 
 /**
  * Search movies by keyword
  * @summary Search movies
  */
-export const searchMoviesQueryPageDefault = 1;
-
 export const SearchMoviesQueryParams = zod.object({
   q: zod.coerce.string(),
-  page: zod.coerce.number().default(searchMoviesQueryPageDefault),
+  cursor: zod.coerce.string().optional(),
 });
 
 export const SearchMoviesResponse = zod.object({
@@ -65,9 +64,12 @@ export const SearchMoviesResponse = zod.object({
       labels: zod.array(zod.string()).optional(),
     }),
   ),
-  currentPage: zod.number(),
+  nextCursor: zod
+    .string()
+    .optional()
+    .describe("URL cursor for the next page, empty string if no more pages"),
   hasNextPage: zod.boolean(),
-  totalPages: zod.number().optional(),
+  page: zod.number(),
 });
 
 /**
@@ -112,11 +114,9 @@ export const GetMovieDetailResponse = zod.object({
  * Returns movies filtered by category label
  * @summary Get movies by category/label
  */
-export const getMoviesByCategoryQueryPageDefault = 1;
-
 export const GetMoviesByCategoryQueryParams = zod.object({
   label: zod.coerce.string(),
-  page: zod.coerce.number().default(getMoviesByCategoryQueryPageDefault),
+  cursor: zod.coerce.string().optional(),
 });
 
 export const GetMoviesByCategoryResponse = zod.object({
@@ -131,7 +131,10 @@ export const GetMoviesByCategoryResponse = zod.object({
       labels: zod.array(zod.string()).optional(),
     }),
   ),
-  currentPage: zod.number(),
+  nextCursor: zod
+    .string()
+    .optional()
+    .describe("URL cursor for the next page, empty string if no more pages"),
   hasNextPage: zod.boolean(),
-  totalPages: zod.number().optional(),
+  page: zod.number(),
 });

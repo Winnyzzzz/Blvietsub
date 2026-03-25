@@ -8,5 +8,5 @@
 
 export type GetMoviesByCategoryParams = {
   label: string;
-  page?: number;
+  cursor?: string;
 };

@@ -7,5 +7,8 @@
  */
 
 export type GetMoviesParams = {
-  page?: number;
+  /**
+   * Cursor URL for next page (from previous response nextCursor)
+   */
+  cursor?: string;
 };

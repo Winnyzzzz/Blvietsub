@@ -70,76 +70,33 @@ function parseMoviesFromPage(html: string) {
 
     const mainContent = $el.find(".main-movie-content").first().text().trim();
     const episode = parseEpisode(mainContent);
-
     const year = (titleAttr.match(/\((\d{4})\)/) || [])[1] || "";
 
     if (title || url) {
-      movies.push({
-        title,
-        url,
-        thumbnail,
-        quality: "HD",
-        year,
-        episode,
-        labels: [],
-      });
+      movies.push({ title, url, thumbnail, quality: "HD", year, episode, labels: [] });
     }
   });
 
   return movies;
 }
 
-function parsePagination(html: string, currentPage: number) {
+function extractNextCursor(html: string): string {
   const $ = cheerio.load(html);
-  let hasNextPage = false;
-  let totalPages = currentPage;
-
-  const pagerEl = $("#blog-pager");
-  if (pagerEl.length) {
-    pagerEl.find("span a").each((_i, el) => {
-      const n = parseInt($(el).text().trim(), 10);
-      if (!isNaN(n) && n > totalPages) totalPages = n;
-    });
-
-    const pageCurrent = parseInt(pagerEl.find(".pagecurrent").text().trim(), 10);
-    const allLinks = pagerEl.find("span a").map((_i, el) => parseInt($(el).text().trim(), 10)).get().filter((n) => !isNaN(n));
-    const maxPage = Math.max(...allLinks, pageCurrent || 0, currentPage);
-    if (maxPage > totalPages) totalPages = maxPage;
-    if (currentPage < maxPage) hasNextPage = true;
-
-    const svgLinks = pagerEl.find("span a svg").parent();
-    if (svgLinks.length > 0) {
-      const lastSvgEl = svgLinks.last();
-      const href = lastSvgEl.attr("href") || "";
-      if (href && href.includes("page=")) {
-        const m = href.match(/page=(\d+)/);
-        if (m) {
-          const n = parseInt(m[1], 10);
-          if (n > totalPages) totalPages = n;
-          if (n > currentPage) hasNextPage = true;
-        }
-      } else if (href) {
-        hasNextPage = true;
-      }
-    }
-  }
-
-  return { hasNextPage, totalPages };
+  const nextHref = $("#blog-pager a[href]").first().attr("href") || "";
+  return nextHref;
 }
 
 router.get("/movies", async (req, res) => {
   try {
-    const page = parseInt((req.query.page as string) || "1", 10);
-    const url =
-      page === 1
-        ? `${BASE_URL}/?m=1`
-        : `${BASE_URL}/search?updated-max=&max-results=16&start=${(page - 1) * 16}&by-date=false`;
+    const cursor = (req.query.cursor as string) || "";
+    const page = cursor ? 2 : 1;
 
+    const url = cursor || `${BASE_URL}/?m=1`;
     const html = await fetchPage(url);
     const movies = parseMoviesFromPage(html);
-    const { hasNextPage, totalPages } = parsePagination(html, page);
+    const nextCursor = extractNextCursor(html);
 
-    res.json({ movies, currentPage: page, hasNextPage, totalPages });
+    res.json({ movies, nextCursor, hasNextPage: !!nextCursor, page });
   } catch (err) {
     req.log.error({ err }, "Error fetching movies");
     res.status(500).json({ error: "Failed to fetch movies" });
@@ -149,18 +106,15 @@ router.get("/movies", async (req, res) => {
 router.get("/movies/search", async (req, res) => {
   try {
     const q = (req.query.q as string) || "";
-    const page = parseInt((req.query.page as string) || "1", 10);
+    const cursor = (req.query.cursor as string) || "";
+    const page = cursor ? 2 : 1;
 
-    const searchUrl =
-      page === 1
-        ? `${BASE_URL}/search?q=${encodeURIComponent(q)}`
-        : `${BASE_URL}/search?q=${encodeURIComponent(q)}&updated-max=&max-results=16&start=${(page - 1) * 16}&by-date=false`;
-
-    const html = await fetchPage(searchUrl);
+    const url = cursor || `${BASE_URL}/search?q=${encodeURIComponent(q)}`;
+    const html = await fetchPage(url);
     const movies = parseMoviesFromPage(html);
-    const { hasNextPage, totalPages } = parsePagination(html, page);
+    const nextCursor = extractNextCursor(html);
 
-    res.json({ movies, currentPage: page, hasNextPage, totalPages });
+    res.json({ movies, nextCursor, hasNextPage: !!nextCursor, page });
   } catch (err) {
     req.log.error({ err }, "Error searching movies");
     res.status(500).json({ error: "Failed to search movies" });
@@ -170,18 +124,17 @@ router.get("/movies/search", async (req, res) => {
 router.get("/movies/category", async (req, res) => {
   try {
     const label = (req.query.label as string) || "";
-    const page = parseInt((req.query.page as string) || "1", 10);
+    const cursor = (req.query.cursor as string) || "";
+    const page = cursor ? 2 : 1;
 
-    const catUrl =
-      page === 1
-        ? `${BASE_URL}/search/label/${encodeURIComponent(label)}`
-        : `${BASE_URL}/search/label/${encodeURIComponent(label)}?updated-max=&max-results=16&start=${(page - 1) * 16}&by-date=false`;
-
-    const html = await fetchPage(catUrl);
+    const url =
+      cursor ||
+      `${BASE_URL}/search/label/${encodeURIComponent(label)}`;
+    const html = await fetchPage(url);
     const movies = parseMoviesFromPage(html);
-    const { hasNextPage, totalPages } = parsePagination(html, page);
+    const nextCursor = extractNextCursor(html);
 
-    res.json({ movies, currentPage: page, hasNextPage, totalPages });
+    res.json({ movies, nextCursor, hasNextPage: !!nextCursor, page });
   } catch (err) {
     req.log.error({ err }, "Error fetching category movies");
     res.status(500).json({ error: "Failed to fetch category movies" });
@@ -200,8 +153,7 @@ router.get("/movies/detail", async (req, res) => {
     const html = await fetchPage(fullUrl);
     const $ = cheerio.load(html);
 
-    const titleEl = $("h1.post-title, h1.entry-title, h1").first();
-    const title = titleEl.text().trim();
+    const title = $("h1.post-title, h1.entry-title, h1").first().text().trim();
 
     const img = $(".post-body img, .entry-content img").first();
     const thumbnail = parseThumbnail(
@@ -215,13 +167,10 @@ router.get("/movies/detail", async (req, res) => {
 
     let description = "";
     const ndMatch = bodyText.match(/\[nd\]([\s\S]*?)(?:\[\/nd\]|$)/);
-    if (ndMatch) {
-      description = ndMatch[1].trim();
-    }
+    if (ndMatch) description = ndMatch[1].trim();
 
     const mainMovieContent = $("[name='main-movie-content']").first().text();
     const episode = parseEpisode(mainMovieContent);
-
     const year = (title.match(/\((\d{4})\)/) || [])[1] || "";
 
     const embedUrls: string[] = [];
@@ -230,35 +179,19 @@ router.get("/movies/detail", async (req, res) => {
     while ((m = embedPattern.exec(bodyText)) !== null) {
       embedUrls.push(m[2].trim());
     }
-
     const iframeUrl = embedUrls[0] || "";
 
     const metaInfo: Record<string, string> = {};
     const infoMatch = bodyText.match(/\[info\]([\s\S]*?)\[\/info\]/);
     if (infoMatch) {
       const infoText = infoMatch[1];
-      const lines = infoText.split("\n").filter((l) => l.trim());
-      for (const line of lines) {
+      for (const line of infoText.split("\n").filter((l) => l.trim())) {
         const colonIdx = line.indexOf(":");
         if (colonIdx > 0) {
-          const key = line.slice(0, colonIdx).trim().toLowerCase();
-          const val = line.slice(colonIdx + 1).trim();
-          metaInfo[key] = val;
+          metaInfo[line.slice(0, colonIdx).trim().toLowerCase()] = line.slice(colonIdx + 1).trim();
         }
       }
     }
-
-    const duration =
-      metaInfo["thời lượng"] ||
-      metaInfo["thoi luong"] ||
-      metaInfo["duration"] ||
-      "";
-    const country =
-      metaInfo["quốc gia"] || metaInfo["quoc gia"] || metaInfo["country"] || "";
-    const director =
-      metaInfo["đạo diễn"] || metaInfo["dao dien"] || metaInfo["director"] || "";
-    const actors =
-      metaInfo["diễn viên"] || metaInfo["dien vien"] || metaInfo["cast"] || "";
 
     const labels: string[] = [];
     $(".post-labels a, .label a").each((_i, el) => {
@@ -281,23 +214,11 @@ router.get("/movies/detail", async (req, res) => {
       const linkEl = $el.find("a.lable-about").first();
       const href = linkEl.attr("href") || "";
       const relUrl = href.startsWith("http") ? href : BASE_URL + href;
-      const relTitle = cleanTitle(
-        $el.find("h3.lable-home").first().text().trim()
-      );
+      const relTitle = cleanTitle($el.find("h3.lable-home").first().text().trim());
       const relImg = $el.find("img.img-lable").first();
-      const relThumb = parseThumbnail(
-        relImg.attr("data-src") || relImg.attr("src") || ""
-      );
+      const relThumb = parseThumbnail(relImg.attr("data-src") || relImg.attr("src") || "");
       if (relTitle) {
-        relatedMovies.push({
-          title: relTitle,
-          url: relUrl,
-          thumbnail: relThumb,
-          quality: "HD",
-          year: "",
-          episode: "",
-          labels: [],
-        });
+        relatedMovies.push({ title: relTitle, url: relUrl, thumbnail: relThumb, quality: "HD", year: "", episode: "", labels: [] });
       }
     });
 
@@ -309,10 +230,10 @@ router.get("/movies/detail", async (req, res) => {
       quality: "HD",
       year,
       episode,
-      duration,
-      country,
-      director,
-      actors,
+      duration: metaInfo["thời lượng"] || metaInfo["duration"] || "",
+      country: metaInfo["quốc gia"] || metaInfo["country"] || "",
+      director: metaInfo["đạo diễn"] || metaInfo["director"] || "",
+      actors: metaInfo["diễn viên"] || metaInfo["cast"] || "",
       labels,
       iframeUrl,
       embedUrl: iframeUrl,

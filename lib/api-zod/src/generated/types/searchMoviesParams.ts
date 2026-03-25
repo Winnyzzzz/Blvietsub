@@ -8,5 +8,5 @@
 
 export type SearchMoviesParams = {
   q: string;
-  page?: number;
+  cursor?: string;
 };

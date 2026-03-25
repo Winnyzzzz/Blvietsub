@@ -10,29 +10,48 @@ import { Pagination } from "@/components/ui/Pagination";
 export default function Category() {
   const queryParams = useQueryParams();
   const initialLabel = queryParams.get("label") || "";
-  
-  const [page, setPage] = useState(1);
+
+  const [cursors, setCursors] = useState<string[]>([""]);
   const [currentLabel, setCurrentLabel] = useState(initialLabel);
 
   useEffect(() => {
     if (initialLabel !== currentLabel) {
       setCurrentLabel(initialLabel);
-      setPage(1);
+      setCursors([""]);
     }
   }, [initialLabel, currentLabel]);
 
+  const currentCursor = cursors[cursors.length - 1];
+  const currentPage = cursors.length;
+
   const { data, isLoading } = useGetMoviesByCategory(
-    { label: currentLabel, page },
+    currentCursor
+      ? { label: currentLabel, cursor: currentCursor }
+      : { label: currentLabel },
     { query: { enabled: !!currentLabel } }
   );
+
+  function handleNext() {
+    if (data?.nextCursor) {
+      setCursors((prev) => [...prev, data.nextCursor!]);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function handlePrev() {
+    if (cursors.length > 1) {
+      setCursors((prev) => prev.slice(0, -1));
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      
+
       <main className="flex-1 pt-32 pb-20 max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <MovieGrid 
-          isLoading={isLoading} 
+        <MovieGrid
+          isLoading={isLoading}
           isEmpty={!isLoading && !!currentLabel && (!data?.movies || data.movies.length === 0)}
           title={`Thể loại: ${currentLabel}`}
           subtitle="Khám phá các bộ phim hay nhất trong thể loại này."
@@ -43,13 +62,11 @@ export default function Category() {
         </MovieGrid>
 
         {data && data.movies && data.movies.length > 0 && (
-          <Pagination 
-            currentPage={data.currentPage || page} 
-            hasNextPage={data.hasNextPage || false}
-            onPageChange={(newPage) => {
-              setPage(newPage);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
+          <Pagination
+            currentPage={currentPage}
+            hasNextPage={data.hasNextPage ?? false}
+            onNext={handleNext}
+            onPrev={handlePrev}
           />
         )}
       </main>

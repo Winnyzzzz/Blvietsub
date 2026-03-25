@@ -21,9 +21,10 @@ export interface Movie {
 
 export interface MovieListResponse {
   movies: Movie[];
-  currentPage: number;
+  /** URL cursor for the next page, empty string if no more pages */
+  nextCursor?: string;
   hasNextPage: boolean;
-  totalPages?: number;
+  page: number;
 }
 
 export interface MovieDetail {
@@ -45,12 +46,15 @@ export interface MovieDetail {
 }
 
 export type GetMoviesParams = {
-  page?: number;
+  /**
+   * Cursor URL for next page (from previous response nextCursor)
+   */
+  cursor?: string;
 };
 
 export type SearchMoviesParams = {
   q: string;
-  page?: number;
+  cursor?: string;
 };
 
 export type GetMovieDetailParams = {
@@ -59,5 +63,5 @@ export type GetMovieDetailParams = {
 
 export type GetMoviesByCategoryParams = {
   label: string;
-  page?: number;
+  cursor?: string;
 };
