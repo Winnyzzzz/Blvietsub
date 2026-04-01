@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./episodeItem";
 export * from "./getMovieDetailParams";
 export * from "./getMoviesByCategoryParams";
 export * from "./getMoviesParams";
@@ -14,3 +15,4 @@ export * from "./movie";
 export * from "./movieDetail";
 export * from "./movieListResponse";
 export * from "./searchMoviesParams";
+export * from "./serverGroup";

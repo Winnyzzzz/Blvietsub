@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useGetMovies } from "@workspace/api-client-react";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { Hero } from "@/components/movie/Hero";
 import { MovieCard } from "@/components/movie/MovieCard";
 import { MovieGrid } from "@/components/movie/MovieGrid";
 import { Pagination } from "@/components/ui/Pagination";
@@ -37,9 +36,7 @@ export default function Home() {
       <Header />
 
       <main className="flex-1 pb-20">
-        {currentPage === 1 && <Hero />}
-
-        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-12 md:mt-20">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-8">
           <MovieGrid
             isLoading={isLoading}
             isEmpty={!isLoading && (!data?.movies || data.movies.length === 0)}

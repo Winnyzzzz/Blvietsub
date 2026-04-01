@@ -161,6 +161,31 @@ components:
         - movies
         - hasNextPage
         - page
+    EpisodeItem:
+      type: object
+      properties:
+        num:
+          type: string
+        url:
+          type: string
+      required:
+        - num
+        - url
+    ServerGroup:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        episodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/EpisodeItem"
+      required:
+        - name
+        - type
+        - episodes
     MovieDetail:
       type: object
       properties:
@@ -194,6 +219,10 @@ components:
           type: string
         embedUrl:
           type: string
+        serverGroups:
+          type: array
+          items:
+            $ref: "#/components/schemas/ServerGroup"
         relatedMovies:
           type: array
           items:

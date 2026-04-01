@@ -164,7 +164,8 @@ router.get("/movies/detail", async (req, res) => {
       coverImg.attr("data-src") || coverImg.attr("src") || ""
     );
 
-    const bodyText = $(".post-body, .entry-content").first().text();
+    const bodyText = $(".post-body, .entry-content, [name='main-movie-list']").first().text();
+
     let description = "";
     const ndMatch = bodyText.match(/\[nd\]([\s\S]*?)(?:\[\/nd\]|$)/);
     if (ndMatch) description = ndMatch[1].trim();
@@ -173,14 +174,65 @@ router.get("/movies/detail", async (req, res) => {
     const episode = parseEpisode(statusText);
     const year = (title.match(/\((\d{4})\)/) || [])[1] || "";
 
-    // Extract embed video URLs: [01|url] format
-    const embedUrls: string[] = [];
-    const embedPattern = /\[(\d+)\|([^\]]+)\]/g;
-    let m: RegExpExecArray | null;
-    while ((m = embedPattern.exec(bodyText)) !== null) {
-      embedUrls.push(m[2].trim());
+    // Parse server groups from body text format:
+    // [br/Server SS] → server header
+    // [01|URL] → VIP type episode
+    // [01*URL] → ALO type episode
+    // [01-URL] → M3U8 type episode
+    type EpisodeItem = { num: string; url: string };
+    type ServerGroup = { name: string; type: string; episodes: EpisodeItem[] };
+
+    const serverGroups: ServerGroup[] = [];
+    const rawBody = $("[name='main-movie-list']").html() || $(".post-body").html() || $(".entry-content").html() || "";
+    const lines = rawBody.replace(/<[^>]+>/g, "\n").split("\n").map(l => l.trim()).filter(Boolean);
+
+    let currentServer: ServerGroup | null = null;
+
+    for (const line of lines) {
+      const serverMatch = line.match(/^\[br\/(.+?)\]$/);
+      if (serverMatch) {
+        currentServer = { name: serverMatch[1].trim(), type: "VIP", episodes: [] };
+        serverGroups.push(currentServer);
+        continue;
+      }
+      // [num|url] = VIP, [num*url] = ALO, [num-url] = M3U8
+      const epMatch = line.match(/^\[(\d+)[|*-](.+?)\]$/);
+      if (epMatch) {
+        const epNum = epMatch[1];
+        const epUrl = epMatch[2].trim();
+        const epType = line.includes("|") ? "VIP" : line.includes("*") ? "ALO" : "M3U8";
+        if (!currentServer) {
+          currentServer = { name: "Server 1", type: epType, episodes: [] };
+          serverGroups.push(currentServer);
+        }
+        currentServer.episodes.push({ num: epNum, url: epUrl });
+        continue;
+      }
     }
-    const iframeUrl = embedUrls[0] || "";
+
+    // fallback: if no server groups found, try raw text parse
+    if (serverGroups.length === 0) {
+      const serverPattern = /\[br\/([^\]]+)\]/g;
+      const epVipPattern = /\[(\d+)\|([^\]]+)\]/g;
+      let sm: RegExpExecArray | null;
+      let em: RegExpExecArray | null;
+
+      // split by server headers
+      const serverSections = rawBody.split(/\[br\/[^\]]+\]/);
+      const serverNames: string[] = [];
+      while ((sm = serverPattern.exec(rawBody)) !== null) serverNames.push(sm[1].trim());
+
+      serverSections.slice(1).forEach((section, idx) => {
+        const sg: ServerGroup = { name: serverNames[idx] || `Server ${idx + 1}`, type: "VIP", episodes: [] };
+        while ((em = epVipPattern.exec(section)) !== null) {
+          sg.episodes.push({ num: em[1], url: em[2].trim() });
+        }
+        if (sg.episodes.length > 0) serverGroups.push(sg);
+      });
+    }
+
+    // fallback iframeUrl = first episode of first server
+    const iframeUrl = serverGroups[0]?.episodes[0]?.url || "";
 
     // Extract structured metadata from .listitem divs
     let duration = "";
@@ -252,7 +304,7 @@ router.get("/movies/detail", async (req, res) => {
     res.json({
       title, url: fullUrl, thumbnail, description, quality: "HD",
       year, episode, duration, country, director, actors,
-      labels, iframeUrl, embedUrl: iframeUrl, relatedMovies,
+      labels, iframeUrl, embedUrl: iframeUrl, serverGroups, relatedMovies,
     });
   } catch (err) {
     req.log.error({ err }, "Error fetching movie detail");

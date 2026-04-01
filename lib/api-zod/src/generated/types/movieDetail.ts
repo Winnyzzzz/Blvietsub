@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Movie } from "./movie";
+import type { ServerGroup } from "./serverGroup";
 
 export interface MovieDetail {
   title: string;
@@ -22,5 +23,6 @@ export interface MovieDetail {
   labels?: string[];
   iframeUrl?: string;
   embedUrl?: string;
+  serverGroups?: ServerGroup[];
   relatedMovies?: Movie[];
 }

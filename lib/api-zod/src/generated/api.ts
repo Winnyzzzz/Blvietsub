@@ -95,6 +95,20 @@ export const GetMovieDetailResponse = zod.object({
   labels: zod.array(zod.string()).optional(),
   iframeUrl: zod.string().optional(),
   embedUrl: zod.string().optional(),
+  serverGroups: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        type: zod.string(),
+        episodes: zod.array(
+          zod.object({
+            num: zod.string(),
+            url: zod.string(),
+          }),
+        ),
+      }),
+    )
+    .optional(),
   relatedMovies: zod
     .array(
       zod.object({

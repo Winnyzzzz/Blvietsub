@@ -27,6 +27,17 @@ export interface MovieListResponse {
   page: number;
 }
 
+export interface EpisodeItem {
+  num: string;
+  url: string;
+}
+
+export interface ServerGroup {
+  name: string;
+  type: string;
+  episodes: EpisodeItem[];
+}
+
 export interface MovieDetail {
   title: string;
   url: string;
@@ -42,6 +53,7 @@ export interface MovieDetail {
   labels?: string[];
   iframeUrl?: string;
   embedUrl?: string;
+  serverGroups?: ServerGroup[];
   relatedMovies?: Movie[];
 }
 
