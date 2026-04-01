@@ -56,7 +56,6 @@ export default function MovieDetail() {
   function handleSelectEpisode(num: string, url: string) {
     setSelectedEpNum(num);
     setCurrentUrl(url);
-    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   if (isLoading) {
